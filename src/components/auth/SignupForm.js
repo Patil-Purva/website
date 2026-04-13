@@ -5,29 +5,18 @@ import * as Yup from "yup";
 import { useMutation } from "@tanstack/react-query";
 import axios from "axios";
 import { useEffect } from "react";
+import { toast } from "react-toastify";
 
 export default function SignupForm() {
-    // --- API function inside this page ---
+
+    // --- API function ---
     const signupUser = async (userData) => {
-        // Replace with your backend signup URL
         const response = await axios.post(
             "http://localhost:5000/api/v1/auth/register",
             userData
         );
-        return response.data; // { msg: "User registered successfully" }
+        return response.data;
     };
-
-    // --- React Query mutation ---
-    const mutation = useMutation({
-        mutationFn: signupUser,
-        onSuccess: (data) => {
-            alert(data.msg); // show success message
-            // Optional: redirect to login page here
-        },
-        onError: (error) => {
-            alert(error.response?.data?.msg || "Signup failed!");
-        },
-    });
 
     // --- Formik setup ---
     const formik = useFormik({
@@ -41,25 +30,55 @@ export default function SignupForm() {
             name: Yup.string()
                 .min(2, "Name must be at least 2 characters")
                 .required("Name is required"),
+
             email: Yup.string()
                 .email("Invalid email")
                 .required("Email is required"),
+
             mobile: Yup.string()
                 .matches(/^[0-9]{10}$/, "Mobile must be 10 digits")
                 .required("Mobile is required"),
+
             password: Yup.string()
                 .min(6, "Minimum 6 characters")
                 .required("Password is required"),
         }),
         onSubmit: (values) => {
-            mutation.mutate(values); // call backend API
+            mutation.mutate(values);
         },
     });
 
+    // --- React Query mutation ---
+    const mutation = useMutation({
+        mutationFn: signupUser,
+
+        // ✅ SUCCESS
+        onSuccess: (data) => {
+            toast.success(data.message || "User registered successfully");
+            formik.resetForm();
+        },
+
+        // ✅ ERROR (ONLY EMAIL ERROR NOW)
+        onError: (error) => {
+            const message =
+                error.response?.data?.error?.message ||
+                "Signup failed!";
+
+            toast.error(message);
+
+            // 🔥 Show error under email field ONLY
+            if (message.toLowerCase().includes("email")) {
+                formik.setFieldError("email", message);
+            }
+        },
+    });
+
+    // Debug (optional)
     useEffect(() => {
-        if (mutation.isSuccess) console.log("Signup successful");
-        if (mutation.isError) console.error("Signup error", mutation.error);
-    }, [mutation.status]);
+        if (mutation.isError) {
+            console.error("Signup error", mutation.error);
+        }
+    }, [mutation.isError]);
 
     return (
         <div className="w-full max-w-md bg-white p-8 rounded-2xl shadow-xl">
@@ -68,6 +87,7 @@ export default function SignupForm() {
             </h2>
 
             <form onSubmit={formik.handleSubmit} className="space-y-4">
+
                 {/* Name */}
                 <div>
                     <label className="block mb-1 text-sm font-medium">Name</label>
@@ -75,7 +95,7 @@ export default function SignupForm() {
                         type="text"
                         name="name"
                         placeholder="Enter your name"
-                        className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                        className="w-full px-4 py-2 border rounded-lg"
                         onChange={formik.handleChange}
                         value={formik.values.name}
                     />
@@ -91,7 +111,7 @@ export default function SignupForm() {
                         type="email"
                         name="email"
                         placeholder="Enter your email"
-                        className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                        className="w-full px-4 py-2 border rounded-lg"
                         onChange={formik.handleChange}
                         value={formik.values.email}
                     />
@@ -107,7 +127,7 @@ export default function SignupForm() {
                         type="text"
                         name="mobile"
                         placeholder="Enter your mobile number"
-                        className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                        className="w-full px-4 py-2 border rounded-lg"
                         onChange={formik.handleChange}
                         value={formik.values.mobile}
                     />
@@ -123,7 +143,7 @@ export default function SignupForm() {
                         type="password"
                         name="password"
                         placeholder="Enter your password"
-                        className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                        className="w-full px-4 py-2 border rounded-lg"
                         onChange={formik.handleChange}
                         value={formik.values.password}
                     />
@@ -135,7 +155,8 @@ export default function SignupForm() {
                 {/* Button */}
                 <button
                     type="submit"
-                    className="w-full bg-green-600 text-white py-2 rounded-lg hover:bg-green-700 transition"
+                    disabled={mutation.isLoading}
+                    className="w-full bg-green-600 text-white py-2 rounded-lg disabled:opacity-50"
                 >
                     {mutation.isLoading ? "Signing Up..." : "Sign Up"}
                 </button>

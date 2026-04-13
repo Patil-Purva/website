@@ -2,6 +2,8 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import ReactQueryProvider from "../providers/ReactQueryProvider";
 import Navbar from "../components/layout/Navbar";
+import { ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -27,8 +29,11 @@ export default function RootLayout({ children }) {
       <body className="min-h-full flex flex-col">
         <ReactQueryProvider>
 
-          {/* ✅ ADD NAVBAR HERE */}
+          {/* ✅ Navbar */}
           <Navbar />
+
+          {/* ✅ Toast container (GLOBAL) */}
+          <ToastContainer position="top-center" autoClose={3000} />
 
           {/* Page content */}
           <main className="flex-1">
