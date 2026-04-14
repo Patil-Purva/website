@@ -4,19 +4,55 @@ import { useFormik } from "formik";
 import * as Yup from "yup";
 import { useMutation } from "@tanstack/react-query";
 import axios from "axios";
-import { useEffect } from "react";
 import { toast } from "react-toastify";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 export default function SignupForm() {
+    const router = useRouter();
 
     // --- API function ---
     const signupUser = async (userData) => {
         const response = await axios.post(
             "http://localhost:5000/api/v1/auth/register",
-            userData
+            userData,
+            {
+                withCredentials: true, // 🔥 IMPORTANT (future-proof)
+            }
         );
         return response.data;
     };
+
+    // --- React Query mutation ---
+    const mutation = useMutation({
+        mutationFn: signupUser,
+
+        // ✅ SUCCESS
+        onSuccess: (data) => {
+            toast.success(data.message || "User registered successfully");
+
+            formik.resetForm();
+
+            // 🔥 redirect to login (best practice)
+            setTimeout(() => {
+                router.push("/login");
+            }, 1000);
+        },
+
+        // ✅ ERROR (backend aligned)
+        onError: (error) => {
+            const message =
+                error.response?.data?.error?.message ||
+                "Signup failed!";
+
+            toast.error(message);
+
+            // 🔥 show error under email only
+            if (message.toLowerCase().includes("email")) {
+                formik.setFieldError("email", message);
+            }
+        },
+    });
 
     // --- Formik setup ---
     const formik = useFormik({
@@ -47,38 +83,6 @@ export default function SignupForm() {
             mutation.mutate(values);
         },
     });
-
-    // --- React Query mutation ---
-    const mutation = useMutation({
-        mutationFn: signupUser,
-
-        // ✅ SUCCESS
-        onSuccess: (data) => {
-            toast.success(data.message || "User registered successfully");
-            formik.resetForm();
-        },
-
-        // ✅ ERROR (ONLY EMAIL ERROR NOW)
-        onError: (error) => {
-            const message =
-                error.response?.data?.error?.message ||
-                "Signup failed!";
-
-            toast.error(message);
-
-            // 🔥 Show error under email field ONLY
-            if (message.toLowerCase().includes("email")) {
-                formik.setFieldError("email", message);
-            }
-        },
-    });
-
-    // Debug (optional)
-    useEffect(() => {
-        if (mutation.isError) {
-            console.error("Signup error", mutation.error);
-        }
-    }, [mutation.isError]);
 
     return (
         <div className="w-full max-w-md bg-white p-8 rounded-2xl shadow-xl">
@@ -155,11 +159,24 @@ export default function SignupForm() {
                 {/* Button */}
                 <button
                     type="submit"
-                    disabled={mutation.isLoading}
+                    disabled={mutation.isPending}
                     className="w-full bg-green-600 text-white py-2 rounded-lg disabled:opacity-50"
                 >
-                    {mutation.isLoading ? "Signing Up..." : "Sign Up"}
+                    {mutation.isPending ? "Signing Up..." : "Sign Up"}
                 </button>
+
+                {/* Login Redirect */}
+                <div className="text-center mt-2">
+                    <p className="text-sm text-gray-600">
+                        Already have an account?{" "}
+                        <Link
+                            href="/login"
+                            className="text-green-600 font-semibold hover:underline"
+                        >
+                            Login
+                        </Link>
+                    </p>
+                </div>
             </form>
         </div>
     );
