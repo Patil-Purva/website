@@ -1,24 +1,41 @@
 import axios from "axios";
 
 const api = axios.create({
-    baseURL: process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000",
-    headers: {
-        "Content-Type": "application/json",
-    },
-    withCredentials: true,
+    baseURL: "http://localhost:5000",
+    withCredentials: true, // ✅ IMPORTANT
 });
 
-// request interceptor
-api.interceptors.request.use(
-    (config) => config,
-    (error) => Promise.reject(error)
-);
-
-// response interceptor
 api.interceptors.response.use(
     (response) => response,
-    (error) => {
-        console.error("API Error:", error.response?.data || error.message);
+    async (error) => {
+        const originalRequest = error.config;
+
+
+        if (
+            originalRequest.url.includes("/auth/refresh") ||
+            originalRequest.url.includes("/auth/logout") ||
+            originalRequest.url.includes("/auth/me")
+        ) {
+            return Promise.reject(error);
+        }
+
+        if (error.response?.status === 401 && !originalRequest._retry) {
+            originalRequest._retry = true;
+
+            try {
+                await axios.post(
+                    "http://localhost:5000/api/v1/auth/refresh",
+                    {},
+                    { withCredentials: true }
+                );
+
+                return api(originalRequest);
+            } catch (err) {
+                // ✅ IMPORTANT
+                return Promise.reject(err);
+            }
+        }
+
         return Promise.reject(error);
     }
 );

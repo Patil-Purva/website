@@ -1,49 +1,45 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
-import axios from "axios";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import api from "@/services/api";
 
 export default function Navbar() {
     const [open, setOpen] = useState(false);
-    const [user, setUser] = useState(null);
     const router = useRouter();
+    const queryClient = useQueryClient();
 
-    // ✅ Fetch logged-in user
-    useEffect(() => {
-        const fetchUser = async () => {
-            try {
-                const res = await axios.get(
-                    "http://localhost:5000/api/v1/auth/me",
-                    { withCredentials: true }
-                );
-                console.log("USER:", res.data); // ✅ ADD THIS
-                setUser(res.data.data);
-            } catch (err) {
-                console.log("ERROR:", err); // ✅ ADD THIS
-                setUser(null);
-            }
-        };
+    const { data, isLoading } = useQuery({
+        queryKey: ["me"],
+        queryFn: async () => {
+            const res = await api.get("/api/v1/auth/me");
+            return res.data.data;
+        },
+        retry: false,
+        staleTime: 0,
+    });
 
-        fetchUser();
-    }, []);
+    const user = data;
 
-    // ✅ Logout
-    const handleLogout = async () => {
-        await axios.post(
-            "http://localhost:5000/api/v1/auth/logout",
-            {},
-            { withCredentials: true }
-        );
+    const logoutMutation = useMutation({
+        mutationFn: () => api.post("/api/v1/auth/logout"),
 
-        setUser(null);
-        router.push("/login");
+        onSuccess: () => {
+            queryClient.setQueryData(["me"], null); // ✅ FIX
+            router.push("/login");
+        },
+
+        onError: () => {
+            queryClient.setQueryData(["me"], null); // ✅ KEEP
+            router.push("/login");
+        },
+    });
+
+    const handleLogout = () => {
+        logoutMutation.mutate();
     };
-
-    // ==============================
-    // MENU CONFIG BASED ON ROLE
-    // ==============================
 
     let menu = [];
 
@@ -56,7 +52,7 @@ export default function Navbar() {
             { name: "Our Book", path: "/books" },
             { name: "Courses", path: "/courses" },
             { name: "Videos", path: "/videos" },
-            { name: "Book Appointment", path: "/login" }, // 🔥 redirect to login
+            { name: "Book Appointment", path: "/login" },
             { name: "Contact", path: "/contact" },
         ];
     }
@@ -80,16 +76,19 @@ export default function Navbar() {
         ];
     }
 
+    if (isLoading) return null;
+
     return (
         <nav className="bg-green-600 text-white sticky top-0 z-50">
             <div className="max-w-7xl mx-auto px-4 py-5 flex justify-between items-center relative">
 
-                {/* Logo */}
-                <h1 className="text-xl font-bold cursor-pointer" onClick={() => router.push("/")}>
+                <h1
+                    className="text-xl font-bold cursor-pointer"
+                    onClick={() => router.push("/")}
+                >
                     Ayurvedic 🌿
                 </h1>
 
-                {/* ================= DESKTOP ================= */}
                 <div className="hidden md:flex items-center gap-6">
 
                     {menu.map((item, i) => (
@@ -98,7 +97,6 @@ export default function Navbar() {
                         </Link>
                     ))}
 
-                    {/* 🔓 PUBLIC BUTTONS */}
                     {!user && (
                         <>
                             <Link href="/login">
@@ -115,7 +113,6 @@ export default function Navbar() {
                         </>
                     )}
 
-                    {/* 👤 USER / DOCTOR */}
                     {user && (
                         <>
                             <span className="font-semibold">
@@ -132,10 +129,8 @@ export default function Navbar() {
                             </button>
                         </>
                     )}
-
                 </div>
 
-                {/* ================= MOBILE BUTTON ================= */}
                 <button
                     className="md:hidden text-2xl"
                     onClick={() => setOpen(!open)}
@@ -143,23 +138,17 @@ export default function Navbar() {
                     ☰
                 </button>
 
-                {/* ================= MOBILE MENU ================= */}
                 {open && (
                     <div className="absolute right-0 top-full mt-2 w-64 bg-white text-black rounded-lg shadow-lg p-4 flex flex-col gap-3 md:hidden">
 
                         {menu.map((item, i) => (
-                            <Link
-                                key={i}
-                                href={item.path}
-                                onClick={() => setOpen(false)}
-                            >
+                            <Link key={i} href={item.path} onClick={() => setOpen(false)}>
                                 {item.name}
                             </Link>
                         ))}
 
                         <hr />
 
-                        {/* 🔓 PUBLIC */}
                         {!user && (
                             <>
                                 <Link href="/login">
@@ -176,7 +165,6 @@ export default function Navbar() {
                             </>
                         )}
 
-                        {/* 👤 USER / DOCTOR */}
                         {user && (
                             <>
                                 <span className="text-green-600 font-semibold text-center">

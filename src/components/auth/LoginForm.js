@@ -1,20 +1,19 @@
 "use client";
 
 import { useState } from "react";
-import { useAuthStore } from "@/store/useAuthStore";
 import { useRouter } from "next/navigation";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import api from "@/services/api";
 
 export default function LoginPage() {
-    const { login } = useAuthStore();
     const router = useRouter();
+    const queryClient = useQueryClient(); // ✅ important
 
     // ✅ form state
     const [form, setForm] = useState({
         email: "",
         password: "",
     });
-
-    const [loading, setLoading] = useState(false);
 
     // ✅ handle input
     const handleChange = (e) => {
@@ -24,19 +23,39 @@ export default function LoginPage() {
         });
     };
 
-    // ✅ handle submit
-    const handleLogin = async (e) => {
-        e.preventDefault();
-        setLoading(true);
+    // ==========================
+    // ✅ LOGIN MUTATION
+    // ==========================
+    const { mutate, isPending } = useMutation({
+        mutationFn: async (data) => {
+            return await api.post("/api/v1/auth/login", data);
+        },
 
-        try {
-            await login(form); // 🔥 dynamic data
-            router.push("/appointment");
-        } catch (err) {
-            console.log("Login error:", err);
-        } finally {
-            setLoading(false);
-        }
+        onSuccess: async (res) => {
+            console.log("LOGIN RESPONSE:", res.data);
+
+            const user = res?.data?.data; // ✅ correct
+
+            // 🔥 REFRESH USER (VERY IMPORTANT)
+            await queryClient.invalidateQueries(["me"]);
+
+            // ✅ ROLE BASED REDIRECT
+            if (user?.role === "doctor") {
+                router.push("/doctor/dashboard");
+            } else {
+                router.push("/book-appointment");
+            }
+        },
+
+        onError: (err) => {
+            console.log("Login error:", err.response?.data || err.message);
+        },
+    });
+
+    // ✅ handle submit
+    const handleLogin = (e) => {
+        e.preventDefault();
+        mutate(form);
     };
 
     return (
@@ -74,10 +93,10 @@ export default function LoginPage() {
                 {/* Button */}
                 <button
                     type="submit"
-                    disabled={loading}
+                    disabled={isPending}
                     className="w-full bg-green-600 text-white py-2 rounded"
                 >
-                    {loading ? "Logging in..." : "Login"}
+                    {isPending ? "Logging in..." : "Login"}
                 </button>
             </form>
         </div>
