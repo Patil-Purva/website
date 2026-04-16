@@ -3,42 +3,27 @@
 import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import api from "@/services/api";
+import { useAuthStore } from "@/lib/store/useAuthStore";
 
 export default function Navbar() {
     const [open, setOpen] = useState(false);
     const router = useRouter();
-    const queryClient = useQueryClient();
 
-    const { data, isLoading } = useQuery({
-        queryKey: ["me"],
-        queryFn: async () => {
-            const res = await api.get("/api/v1/auth/me");
-            return res.data.data;
-        },
-        retry: false,
-        staleTime: 0,
-    });
+    // ✅ Zustand state
+    const user = useAuthStore((state) => state.user);
+    const logoutUser = useAuthStore((state) => state.logout);
 
-    const user = data;
-
-    const logoutMutation = useMutation({
-        mutationFn: () => api.post("/api/v1/auth/logout"),
-
-        onSuccess: () => {
-            queryClient.setQueryData(["me"], null); // ✅ FIX
+    // ✅ Logout handler
+    const handleLogout = async () => {
+        try {
+            await api.post("/api/v1/auth/logout"); // server logout
+        } catch (error) {
+            console.log("Logout API error:", error);
+        } finally {
+            logoutUser(); // clear Zustand state
             router.push("/login");
-        },
-
-        onError: () => {
-            queryClient.setQueryData(["me"], null); // ✅ KEEP
-            router.push("/login");
-        },
-    });
-
-    const handleLogout = () => {
-        logoutMutation.mutate();
+        }
     };
 
     let menu = [];
@@ -75,8 +60,6 @@ export default function Navbar() {
             { name: "Patients", path: "/doctor/patients" },
         ];
     }
-
-    if (isLoading) return null;
 
     return (
         <nav className="bg-green-600 text-white sticky top-0 z-50">

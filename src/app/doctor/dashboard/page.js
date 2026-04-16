@@ -1,15 +1,10 @@
-"use client";
+import ProtectedRoute from "@/components/ProtectedRoute";
+import Dashboard from "@/components/doctor/Dashboard";
 
 export default function DoctorDashboard() {
     return (
-        <div className="p-6">
-            <h1 className="text-2xl font-bold">
-                Doctor Dashboard 👨‍⚕️
-            </h1>
-
-            <p className="mt-4">
-                Welcome to your dashboard
-            </p>
-        </div>
+        <ProtectedRoute allowedRoles={["doctor"]}>
+            <Dashboard />
+        </ProtectedRoute>
     );
 }

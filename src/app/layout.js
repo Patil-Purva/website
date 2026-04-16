@@ -2,6 +2,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import ReactQueryProvider from "../providers/ReactQueryProvider";
 import Navbar from "../components/layout/Navbar";
+import Loader from "../components/auth/Loader";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
@@ -29,10 +30,13 @@ export default function RootLayout({ children }) {
       <body className="min-h-full flex flex-col">
         <ReactQueryProvider>
 
+          {/* 🔥 AUTH LOADER (VERY IMPORTANT) */}
+          <Loader />
+
           {/* ✅ Navbar */}
           <Navbar />
 
-          {/* ✅ Toast container (GLOBAL) */}
+          {/* ✅ Toast container */}
           <ToastContainer position="top-center" autoClose={3000} />
 
           {/* Page content */}

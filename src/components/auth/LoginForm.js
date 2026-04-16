@@ -1,19 +1,36 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
 import api from "@/services/api";
+import { useAuthStore } from "@/lib/store/useAuthStore";
 
 export default function LoginPage() {
     const router = useRouter();
-    const queryClient = useQueryClient(); // ✅ important
 
-    // ✅ form state
+    const user = useAuthStore((state) => state.user);
+    const hasHydrated = useAuthStore((state) => state.hasHydrated);
+    const loginUser = useAuthStore((state) => state.login);
+
     const [form, setForm] = useState({
         email: "",
         password: "",
     });
+
+    const [loading, setLoading] = useState(false);
+
+    // ✅ AUTO REDIRECT IF ALREADY LOGGED IN
+    useEffect(() => {
+        if (!hasHydrated) return;
+
+        if (user) {
+            if (user.role === "doctor") {
+                router.replace("/doctor/dashboard");
+            } else {
+                router.replace("/book-appointment");
+            }
+        }
+    }, [user, hasHydrated, router]);
 
     // ✅ handle input
     const handleChange = (e) => {
@@ -23,40 +40,43 @@ export default function LoginPage() {
         });
     };
 
-    // ==========================
-    // ✅ LOGIN MUTATION
-    // ==========================
-    const { mutate, isPending } = useMutation({
-        mutationFn: async (data) => {
-            return await api.post("/api/v1/auth/login", data);
-        },
-
-        onSuccess: async (res) => {
-            console.log("LOGIN RESPONSE:", res.data);
-
-            const user = res?.data?.data; // ✅ correct
-
-            // 🔥 REFRESH USER (VERY IMPORTANT)
-            await queryClient.invalidateQueries(["me"]);
-
-            // ✅ ROLE BASED REDIRECT
-            if (user?.role === "doctor") {
-                router.push("/doctor/dashboard");
-            } else {
-                router.push("/book-appointment");
-            }
-        },
-
-        onError: (err) => {
-            console.log("Login error:", err.response?.data || err.message);
-        },
-    });
-
-    // ✅ handle submit
-    const handleLogin = (e) => {
+    // ✅ handle login
+    const handleLogin = async (e) => {
         e.preventDefault();
-        mutate(form);
+
+        try {
+            setLoading(true);
+
+            const res = await api.post("/api/v1/auth/login", form);
+            const userData = res?.data?.data;
+
+            loginUser(userData);
+
+            // ✅ redirect after login
+            if (userData.role === "doctor") {
+                router.replace("/doctor/dashboard");
+            } else {
+                router.replace("/book-appointment");
+            }
+
+        } catch (err) {
+            console.log("Login error:", err.response?.data || err.message);
+        } finally {
+            setLoading(false);
+        }
     };
+
+    // ⏳ wait for Zustand hydration
+    if (!hasHydrated) {
+        return (
+            <div className="flex justify-center items-center h-screen">
+                <p>Loading...</p>
+            </div>
+        );
+    }
+
+    // ⛔ if already logged in → don't show login form
+    if (user) return null;
 
     return (
         <div className="flex justify-center items-center min-h-screen">
@@ -68,7 +88,6 @@ export default function LoginPage() {
                     Login 🌿
                 </h2>
 
-                {/* Email */}
                 <input
                     type="email"
                     name="email"
@@ -79,7 +98,6 @@ export default function LoginPage() {
                     required
                 />
 
-                {/* Password */}
                 <input
                     type="password"
                     name="password"
@@ -90,13 +108,12 @@ export default function LoginPage() {
                     required
                 />
 
-                {/* Button */}
                 <button
                     type="submit"
-                    disabled={isPending}
+                    disabled={loading}
                     className="w-full bg-green-600 text-white py-2 rounded"
                 >
-                    {isPending ? "Logging in..." : "Login"}
+                    {loading ? "Logging in..." : "Login"}
                 </button>
             </form>
         </div>
