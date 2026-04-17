@@ -42,29 +42,24 @@ export default function LoginPage() {
 
     // ✅ handle login
     const handleLogin = async (e) => {
-        e.preventDefault();
+    e.preventDefault();
 
-        try {
-            setLoading(true);
+    try {
+        setLoading(true);
 
-            const res = await api.post("/api/v1/auth/login", form);
-            const userData = res?.data?.data;
+        const res = await api.post("/api/v1/auth/login", form);
+        const userData = res?.data?.data;
 
-            loginUser(userData);
+        loginUser(userData);
 
-            // ✅ redirect after login
-            if (userData.role === "doctor") {
-                router.replace("/doctor/dashboard");
-            } else {
-                router.replace("/book-appointment");
-            }
+        // ❌ REMOVE redirect from here
 
-        } catch (err) {
-            console.log("Login error:", err.response?.data || err.message);
-        } finally {
-            setLoading(false);
-        }
-    };
+    } catch (err) {
+        console.log("Login error:", err.response?.data || err.message);
+    } finally {
+        setLoading(false);
+    }
+};
 
     // ⏳ wait for Zustand hydration
     if (!hasHydrated) {

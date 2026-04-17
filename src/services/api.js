@@ -1,7 +1,11 @@
 import axios from "axios";
 
-const api = axios.create({
-    baseURL: "http://localhost:5000", // ✅ unchanged
+export const api = axios.create({
+    baseURL: "http://localhost:5000",
+    timeout: 10000,
+    headers: {
+        "Content-Type": "application/json",
+    },
     withCredentials: true,
 });
 
@@ -10,12 +14,14 @@ let failedQueue = [];
 
 const processQueue = (error) => {
     failedQueue.forEach((prom) => {
-        if (error) prom.reject(error);
-        else prom.resolve();
+        if (error) {
+            prom.reject(error);
+        } else {
+            prom.resolve();
+        }
     });
     failedQueue = [];
 };
-
 api.interceptors.response.use(
     (response) => response,
     async (error) => {
@@ -25,7 +31,7 @@ api.interceptors.response.use(
             return Promise.reject(error);
         }
 
-        // ✅ skip refresh + logout only
+        // ✅ Skip refresh + logout
         if (
             originalRequest.url.includes("/auth/refresh") ||
             originalRequest.url.includes("/auth/logout")
@@ -35,6 +41,7 @@ api.interceptors.response.use(
 
         if (error.response.status === 401 && !originalRequest._retry) {
 
+            // 🔁 If already refreshing → queue
             if (isRefreshing) {
                 return new Promise((resolve, reject) => {
                     failedQueue.push({ resolve, reject });
@@ -47,13 +54,13 @@ api.interceptors.response.use(
             isRefreshing = true;
 
             try {
-                // ✅ FIXED
-                await api.post("/auth/refresh");
+                // ✅ FIX: use GET (your backend expects cookies)
+                await api.post("/api/v1/auth/refresh");
 
                 processQueue(null);
                 isRefreshing = false;
 
-                return api(originalRequest);
+                return api(originalRequest); // retry original
 
             } catch (refreshError) {
                 processQueue(refreshError);
