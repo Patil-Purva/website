@@ -56,7 +56,7 @@ export default function Navbar() {
     if (user?.role === "doctor") {
         menu = [
             { name: "Dashboard", path: "/doctor/dashboard" },
-            { name: "Appointments", path: "/doctor/appointments" },
+            { name: "Appointments", path: "/doctor/appointment" },
             { name: "Patients", path: "/doctor/patients" },
         ];
     }
