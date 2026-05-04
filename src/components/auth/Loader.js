@@ -1,35 +1,38 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { usePathname } from "next/navigation";
 import api from "@/services/api";
 import { useAuthStore } from "@/lib/store/useAuthStore";
 
 export default function Loader() {
-    const pathname = usePathname();
     const login = useAuthStore((state) => state.login);
     const logout = useAuthStore((state) => state.logout);
+    const user = useAuthStore((state) => state.user);
 
-    const hasFetched = useRef(false); // ✅ ADD THIS
+    const hasFetched = useRef(false);
 
     useEffect(() => {
-        if (pathname === "/login" || pathname === "/signup") return;
+        // ✅ Already have user → no need to call API
+        if (user) return;
 
-        // ✅ Prevent multiple calls
+        // ✅ Prevent duplicate calls (StrictMode / re-mount)
         if (hasFetched.current) return;
         hasFetched.current = true;
 
         const fetchUser = async () => {
             try {
-                const res = await api.get("api/v1/auth/me");
+                console.log("🔁 auth/me API called");
+
+                const res = await api.get("/api/v1/auth/me");
                 login(res.data.data);
             } catch (err) {
+                console.log("❌ auth/me failed");
                 logout();
             }
         };
 
         fetchUser();
-    }, [pathname]);
+    }, [user, login, logout]);
 
     return null;
 }
