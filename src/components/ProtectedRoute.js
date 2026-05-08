@@ -24,7 +24,7 @@ export default function ProtectedRoute({ children, allowedRoles = [] }) {
             router.replace("/");
             return;
         }
-    }, [user, hasHydrated, router]);
+    }, [user, hasHydrated]);
 
     // ⏳ Wait for Zustand hydration
     if (!hasHydrated) {
